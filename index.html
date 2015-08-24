@@ -45,11 +45,10 @@
 				//
 				game.renderer.renderSession.roundPixels = true; // need this?
 				if(runGame == 0) {
-					game.plugins.add(Phaser.Plugin.PixelScaler, 4);
+					game.plugins.add(Phaser.Plugin.PixelScaler, 3);
 					runGame = 1;
 				}
 				
-
 				game.load.image("title-screen", "assets/title-screen.png");
 				game.load.image("title-instructions", "assets/title-instructions.png");
 				game.load.spritesheet('vampire', 'assets/vampire.png', 16, 24);
@@ -98,8 +97,8 @@
 
 					this.title_entities.sparkles.animations.play("sparkles");
 				
-					this.title_entities.sparkles.x = vamp.x - 7 //- _.random(5,7);
-					this.title_entities.sparkles.y = vamp.y -4 //- _.random(3,5);
+					this.title_entities.sparkles.x = vamp.x - _.random(5,7);
+					this.title_entities.sparkles.y = vamp.y - _.random(3,5);
 
 					if(vamp.animations.currentAnim.name != 'walk') {
 						//this.title_entities.sparkles.animations.stop();
@@ -255,7 +254,7 @@
 				RUNNERS.add(vamp);
 				var humanNames = _(runnerNames).shuffle().take(7).value();
 
-				for(var i = 0; i<6; i++) {
+				for(var i = 0; i<10; i++) {
 					var humanKey = 'humans';
 					if(_.random(1,3) == 2) {
 						humanKey = 'humans2';
