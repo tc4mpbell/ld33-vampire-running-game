@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Monsters!</title>
+
+	<style>
+	html,body {
+		background: #111;
+		text-align: center;
+		padding: 20px;
+		min-height:1000px;
+
+	}
+	canvas {
+		overflow: hidden;
+	}
+	</style>
+
+	<script src="assets/lodash.min.js"></script>
+	<script src="assets/phaser.min.js"></script>
+	<script src="assets/PixelScaler.js"></script>
+</head>
+<body>
+	<!-- <canvas id='gameCanvas'></canvas> -->
+	
+	<script>
+		var VampireGame = {};
+
+		var game = new Phaser.Game(260, 120, Phaser.CANVAS, '', { 
+			antialias:false
+		});
+		
+		var runnerNames = ["Bella Swan","Edward Cullen","Jacob Black","Carlisle Cullen","Esme Cullen","Alice Cullen","Emmett Cullen","Rosalie Hale","Jasper Hale","Renesmee Cullen","Sam Uley","Quil Ateara V","Embry Call","Paul Lahote","Jared Cameron","Leah Clearwater","Seth Clearwater","Collin Littlesea  ","Brady Fuller","Ephraim Black","Charlie Swan","Renée Dwyer","Harry Clearwater","Billy Black","Tyler Crowley","Lauren Mallory","Mike Newton","Jessica Stanley","Angela Weber","Eric Yorkie","Emily Young","Sue Clearwater","J. Jenks","Stephanie Meyer"];
+
+		var runGame = 0;
+
+		VampireGame.TitleScreen = function() {};
+		VampireGame.TitleScreen.prototype = {
+			title_entities: {},
+			preload: function() {
+				//game.renderer.renderSession.roundPixels = true; // need this?
+				//
+				game.renderer.renderSession.roundPixels = true; // need this?
+				if(runGame == 0) {
+					game.plugins.add(Phaser.Plugin.PixelScaler, 4);
+					runGame = 1;
+				}
+				
+
+				game.load.image("title-screen", "assets/title-screen.png");
+				game.load.image("title-instructions", "assets/title-instructions.png");
+				game.load.spritesheet('vampire', 'assets/vampire.png', 16, 24);
+				game.load.spritesheet('sparkles', 'assets/sparkles.png', 16,16);
+			},
+			create: function() {
+				game.add.image(0,0, 'title-screen');
+				this.title_entities.instructions = game.add.image(0,0, 'title-instructions');
+
+				game.time.events.loop(Phaser.Timer.SECOND * 0.15, this.bounceInstructions, this);
+
+				game.time.events.add(Phaser.Timer.SECOND * 2, this.greetTheCrowd, this);
+
+				this.title_entities.vamp = game.add.sprite(-12, 103, 'vampire');
+				var vamp = this.title_entities.vamp;
+				vamp.anchor.setTo(0.5);
+				vamp.animations.add('walk', [0, 1], 8, true);
+				vamp.animations.add('bite', [2, 3], 8, true);
+				vamp.animations.add('feeding', [4, 5], 10, true);
+
+				this.title_entities.sparkles = game.add.sprite(-25,91, 'sparkles');
+				this.title_entities.sparkles.animations.add("sparkles",[0,1,2,3,4,5], 7, true);
+			},
+			update: function() {
+				if(game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
+					game.state.start("Game", true, false);
+				}
+
+				if(this.vamping) {
+					var vamp = this.title_entities.vamp;
+					game.physics.arcade.enable(vamp);
+
+					
+		        	vamp.animations.play('walk');
+
+		        	if(!vamp.body.velocity.x) vamp.body.velocity.x = 70;
+
+		        	if(vamp.x > 310 && vamp.body.velocity.x > 0) { 
+		        		vamp.body.velocity.x = -1*vamp.body.velocity.x;
+		        		vamp.scale.x = -1;
+		        	} else if(vamp.x < -41 && vamp.body.velocity.x < 0) {
+						vamp.body.velocity.x = -1*vamp.body.velocity.x;
+						vamp.scale.x = 1;
+		        	}
+
+					this.title_entities.sparkles.animations.play("sparkles");
+				
+					this.title_entities.sparkles.x = vamp.x - 7 //- _.random(5,7);
+					this.title_entities.sparkles.y = vamp.y -4 //- _.random(3,5);
+
+					if(vamp.animations.currentAnim.name != 'walk') {
+						//this.title_entities.sparkles.animations.stop();
+						this.title_entities.sparkles.visible = false;
+					} else {
+						//this.title_entities.sparkles.visible = true;
+						//this.title_entities.sparkles.animations.play("sparkles");
+					}
+				
+				}
+			},
+			greetTheCrowd: function() {
+				this.vamping = true;
+			},
+			bounceInstructions: function() {
+				var curY = this.title_entities.instructions.y;
+
+				if(curY < 1 || (this.title_entities.instructions.goingUp && curY <= 3))  {
+					this.title_entities.instructions.goingUp = true;
+					this.title_entities.instructions.y++;
+				} else if(curY > 3 || !this.title_entities.instructions.goingUp) {
+					this.title_entities.instructions.goingUp  = false;
+					this.title_entities.instructions.y--;
+				}
+			}
+		}
+
+		VampireGame.Game = function() {};
+		VampireGame.Game.prototype = {
+			preload: function() {
+				//preload things!
+				game.physics.startSystem(Phaser.Physics.ARCADE);
+				game.time.advancedTiming = true;
+				
+				//game.plugins.add(Phaser.Plugin.PixelScaler, 4);
+				
+				cursors = game.input.keyboard.createCursorKeys();
+
+				// spritesheets
+				game.load.spritesheet('vampire', 'assets/vampire.png', 16, 24);
+				game.load.spritesheet('humans', 'assets/humans.png', 16, 16);
+				game.load.spritesheet('humans2', 'assets/humans2.png', 16, 16);
+				game.load.image('road', 'assets/background.png', 160, 120);
+				game.load.image('blood', 'assets/blood.png', 4, 4);
+				game.load.spritesheet('sparkles', 'assets/sparkles.png', 16,16);
+
+				game.load.spritesheet("house-bot", "assets/house-bottom.png", 137, 24);
+				game.load.spritesheet("house-top", "assets/house-top.png", 84, 35);
+
+				game.load.spritesheet("leaderboard", 'assets/leaderboard.png', 260, 120);
+
+				var banner = game.load.image('finish-line-banner-shadow', 'assets/finish-line-banner-shadow.png', 35, 120);
+				var shadow = game.load.image('finish-line-banner', 'assets/finish-line-banner.png', 35, 120);
+				
+				game.world.sendToBack(shadow);
+				game.world.bringToTop(banner);
+			},
+			create: function() {
+				game.renderer.renderSession.roundPixels = true; // need this?
+
+				//build the stuff!
+				game.world.setBounds(0, 0, 2000, 120);//24000, 320);
+				game.camera.setBoundsToWorld();  
+				game.stage.smoothed = false;
+				//game.camera.deadzone = new Phaser.Rectangle(0, 0, 600, 400);
+
+				//random shit
+				
+
+				var possiblePos = _.shuffle([2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,29,]);
+				for(var i = 0; i< 80; i++) {
+					if(_.random(1,2) == 1) {
+						//var h = game.add.sprite(11, 10, 'house-top');
+						var a = game.add.sprite(i*94, 85, 'house-top');
+						Entity.create("H1" + i, a, null, function(e) { game.world.bringToTop(e.sprite); })
+					} else {
+						var b = game.add.sprite(i*145, 0, 'house-bot');
+						Entity.create("H2" + i, b, null, function(e) { game.world.bringToTop(e.sprite); })
+						game.world.bringToTop(b);
+					}
+					
+				}
+
+				//leaderboard
+				var leaderboard = game.add.sprite(0,0, 'leaderboard');
+				leaderboard.fixedToCamera = true;
+				//leaderboard.visible = false;
+				LEADERBOARD = Entity.create("Leaderboard", leaderboard, null, function(e) {});
+
+				LEADERBOARD.showLeaders = function() {
+					game.paused = true;
+					//show leaderboard
+					LEADERBOARD.sprite.visible = true;
+
+					//loop through runners.
+					sortedEntities = _(RUNNERS.children).sortBy(function(e) {
+						return e.x;
+					}).reverse().value();
+					var leader = sortedEntities[sortedEntities.length - 1];
+
+					LEADERBOARD.sprite.visible = true;
+					game.world.bringToTop(LEADERBOARD.sprite);
+
+					for(var i = 0; i<5; i++) {
+						var r = sortedEntities[i];
+						var t = (i+1) + ". " + r.name.toUpperCase();
+						if(!r.alive) t += " (deceased)";
+						if(i == 0 && r.name == VAMPIRE.sprite.name) {
+							t += " (well done, sir)"
+						} else if( r.name == VAMPIRE.sprite.name) {
+							t+= " (next time...)"
+						}
+						var txt = game.add.text(40,41+i*13, t, {font: 'Courier New', fontWeight:"normal", fontSize: '12px', fill:"#000"});
+						txt.fixedToCamera = true;
+					}
+
+					var txt = game.add.text(210,86, "PRESS", {font: 'Courier New', fontWeight:"normal", fontSize: '10px', fill:"#fff"});
+					var t2 = game.add.text(210,96, "SPACE", {font: 'Courier New', fontWeight:"normal", fontSize: '10px', fill:"#fff"});
+					txt.fixedToCamera = true;
+					t2.fixedToCamera = true;
+					
+					var spaceBar = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+					spaceBar.onDown.add(function() {
+						game.paused = false;
+						game.state.start("TitleScreen", true, false);
+					});
+				};
+
+				//ground
+				var ground = game.add.tileSprite(0,0, 260,120, 'road');
+				Entity.create('Ground', ground, initGround, updateGround);
+
+				var banner = game.add.image(game.world.bounds.right - 100, -7, 'finish-line-banner');
+				
+				Entity.create("Finish Line", banner, null, function(e) { game.world.bringToTop(e.sprite); })
+				game.add.image(game.world.bounds.right - 100, -7, 'finish-line-banner-shadow');
+
+				RUNNERS = game.add.group();
+
+				//spritz
+				var vamp = game.add.sprite(20, 60, 'vampire')
+				vamp.name = "Edward";
+				VAMPIRE = Entity.create('Edward', vamp, initVampire, updateVampire);
+
+				var sparkles = game.add.sprite(0,0, 'sparkles');
+				SPARKLES = Entity.create('Sparkles', sparkles, initSparkles, updateSparkles);
+				SPARKLES.ix = 0;
+
+				RUNNERS.add(vamp);
+				var humanNames = _(runnerNames).shuffle().take(7).value();
+
+				for(var i = 0; i<6; i++) {
+					var humanKey = 'humans';
+					if(_.random(1,3) == 2) {
+						humanKey = 'humans2';
+					}
+					var runner = game.add.sprite(20, 60, humanKey);
+					runner.autoCull = true;
+					runner.name = humanNames[i];
+					RUNNERS.add(runner);
+					Entity.create(humanNames[i], runner, initRunner, updateRunner);
+				}
+			},
+			update: function() {
+				RUNNERS.customSort(sortDeadPeopleToBack, this);
+
+				//update all characters, timers, etc.
+				_.each(entities, function(e) {
+					if(e.sprite.alive) {
+						var a = e.update(e);
+					}
+				});
+				calcLeader();
+
+				//update random stuff
+				// _.each(randomStuff, function(s) {
+
+				// });
+
+				// wwwwworking?
+				game.physics.arcade.collide(VAMPIRE.sprite, RUNNERS);
+				game.physics.arcade.collide(RUNNERS, RUNNERS);
+				//game.physics.arcade.collide(sprite, sprite3);
+			
+			},
+			render: function() {
+				//game.debug.bodyInfo(VAMPIRE.sprite, 0, 32);
+			    //game.debug.body(VAMPIRE.sprite);
+			 	//    //game.debug.body(sprite2);
+			}
+		}
+
+		game.state.add('Game',VampireGame.Game);
+		game.state.add('TitleScreen',VampireGame.TitleScreen);
+		game.state.start('TitleScreen', true, false);
+
+
+		/* Va-va-variables */
+		var entities = [];
+		var SPEED_X = 30;
+		var SPEED_Y = 1;
+		var DIRECTION = Phaser.RIGHT;
+		var BASE_MAX_SPEED = 40;
+		var VAMPIRE;
+		var RUNNERS;
+		var LEADERBOARD;
+
+		var Entity = {
+			name: '',
+			sprite: null,
+			stats: {},
+			create: function(name, sprite, initFunc, updateFunc) {
+				var e = Object.create(Entity);
+				e.stats = {};
+				e.sprite = sprite;
+				e.update = updateFunc;
+				if(initFunc) initFunc(e);
+				entities.push(e);
+				return e;
+			},
+			update: null
+		};
+
+		/** MISC **/
+		function calcLeader() {
+			sortedEntities = _(RUNNERS.children).sortBy(function(e) {
+				if(!e.alive) return -1;
+				return e.x;
+			}).reverse().value();
+
+			var leader = sortedEntities[0];
+			
+			var myPlace = _.findIndex(sortedEntities, {name:VAMPIRE.sprite.name});
+
+			var distBack = parseInt(leader.x - VAMPIRE.sprite.x,10);
+
+			console.log(myPlace);
+			console.log(distBack);
+
+			if(!VAMPIRE.biting && VAMPIRE.sprite.x > 50) {
+				switch(myPlace) {
+					case 0:
+						VAMPIRE.distBackText.text = "FIRST PLACE! Hang on, buddy. Just hang on.";
+						break;
+					case 1:
+						VAMPIRE.distBackText.text = "2nd! Give up now for the silver!";
+						break;
+					case 2:
+						VAMPIRE.distBackText.text = "3rd! Try running faster.";
+						break;
+					case 3:
+						VAMPIRE.distBackText.text = "Fourth! Basically last, am I right?";
+						break;
+					case 4:
+						VAMPIRE.distBackText.text = "Fifth place? Are you trying?";
+						break;
+					case 5:
+						VAMPIRE.distBackText.text = "You'll never win.";
+						break;
+					default:
+						VAMPIRE.distBackText.text = ":(";
+				}
+			}
+
+			// CHECK FOR THE END
+			if(leader.position.x >= game.world.bounds.right + 10) {
+				LEADERBOARD.showLeaders();
+			}
+		}
+
+		/* SPARKLES */
+		function initSparkles(entity) {
+			entity.sprite.animations.add("sparkles",_.shuffle([0,1,2,3,4,5]), _.random(3,5), true);
+			entity.sprite.animations.play("sparkles");
+		}
+
+		function updateSparkles(entity) {
+			//VAMPIRE.updateSparkles();
+			entity.sprite.x = VAMPIRE.sprite.x - 5;//_.random(5,7);
+			entity.sprite.y = VAMPIRE.sprite.y - 4;//_.random(3,5);
+
+			if(VAMPIRE.sprite.animations.currentAnim.name != 'walk') {
+				entity.sprite.animations.stop();
+				entity.sprite.visible = false;
+			} else {
+				entity.sprite.visible = true;
+				entity.sprite.animations.play("sparkles");
+			}
+		}
+
+		/* RUNNERS */
+		function initRunner(entity) {
+			game.physics.arcade.enable(entity.sprite);
+			entity.sprite.body.drag.setTo(50, 50);
+
+			entity.stats.maxAccel = _.random(100, 100);
+			entity.stats.maxSpeed = _.random(BASE_MAX_SPEED /2, BASE_MAX_SPEED *2);
+			entity.sprite.body.maxVelocity.setTo(entity.stats.maxSpeed);
+			//entity.stats.maxSpeed
+
+			entity.sprite.anchor.setTo(0.5);
+			entity.sprite.animations.add('walk', [0,1], 10, true);
+
+			entity.sprite.body.bounce.x = 1; //bounce!
+			entity.sprite.body.mass = 1;
+			entity.sprite.body.setSize(entity.sprite.width, entity.sprite.height/4, 0, ((entity.sprite.height/4)*2));
+
+			entity.sprite.velocity = entity.stats.maxSpeed * 0.75;
+			entity.sprite.x = _.random(100,240);
+			entity.sprite.y = _.random(32, 86);
+		}
+
+		function updateRunner(entity) {
+			if(entity.sprite.alive) {
+				entity.sprite.body.acceleration.x = entity.stats.maxAccel;
+		        entity.sprite.animations.play('walk');
+		        //entity.sprite.scale.x = 1;
+		    }   
+		}
+
+		/* ENVIRONS */
+		function initGround(entity) {
+			entity.sprite.fixedToCamera = true;
+		}
+		function updateGround(entity) {
+			entity.sprite.tilePosition.x = -game.camera.view.x; 
+			entity.sprite.tilePosition.y = -game.camera.view.y; 
+		}
+
+		/* VAMPIRE */
+		function initVampire(entity) {
+			//HEALTH
+			entity.stats.INIT_MAX_SPEED = BASE_MAX_SPEED*1.5;
+			entity.stats.hunger = 0;
+
+			entity.sprite.anchor.setTo(0.5);
+			entity.sprite.animations.add('walk', [0, 1], 10, true);
+			entity.sprite.animations.add('bite', [2, 3], 8, true);
+			entity.sprite.animations.add('feeding', [4, 5], 10, true);
+
+			entity.healthText = game.add.text(2,2, entity.stats.INIT_MAX_SPEED, {font: 'Arial', fontSize: '8px'});
+			entity.healthText.fixedToCamera = true;
+			entity.healthText.visible = false; // for debugging
+
+			entity.distBackText = game.add.text(2, 2, 0, {font: 'Arial', fontSize: '8px'});
+			entity.distBackText.fixedToCamera = true;
+
+			entity.toEndText = game.add.text(200,2, game.world.bounds.right + " to end!", {font: 'Arial', fontSize: '8px'});
+			entity.toEndText.fixedToCamera = true;
+
+			game.camera.follow(entity.sprite, Phaser.Camera.FOLLOW_PLATFORMER);
+
+			game.physics.arcade.enable(entity.sprite);
+
+			entity.sprite.body.drag.setTo(entity.stats.INIT_MAX_SPEED, entity.stats.INIT_MAX_SPEED);
+			entity.sprite.body.maxVelocity.setTo(entity.stats.INIT_MAX_SPEED, entity.stats.INIT_MAX_SPEED);
+
+			entity.sprite.body.setSize(entity.sprite.width, entity.sprite.height/4, 0, ((entity.sprite.height/4)*2));
+
+			// Todo(taylor) kinda working? doesn't rebound off back wall.
+			//entity.sprite.body.collideWorldBounds = true;
+
+			entity.sprite.body.bounce.x = 0.35;
+			entity.sprite.body.mass = 2;
+
+
+
+			entity.updateHealth = function() {
+				var blood = parseInt(VAMPIRE.sprite.body.maxVelocity.x / 10);
+				VAMPIRE.drawHealth(blood);
+			}
+			entity.drawHealth = function(num, entity) {
+				if(!entity) entity = VAMPIRE;
+
+				if(!entity.bloodDrops) {
+					entity.bloodDrops = game.add.graphics(2, 13);
+					entity.bloodDrops.fixedToCamera = true;
+				} else {
+					entity.bloodDrops.clear();
+				}
+				
+				console.log("health", num);
+				//HEALTH
+				for(var i = 0; i<num; i++) {
+					entity.bloodDrops.beginFill(0xFF2A00, 1);
+					var c = entity.bloodDrops.drawCircle(i* 8 + 2, 2, 5);
+					entity.bloodDrops.endFill();
+				}	
+			}
+			entity.drawHealth(entity.sprite.body.maxVelocity.x / 10, entity);
+
+			// stats!
+			entity.updateStats = function(notMoarHungry) {
+				//update stats every few seconds
+				if(!notMoarHungry) {
+					VAMPIRE.stats.hunger += BASE_MAX_SPEED/10;
+				}
+
+				// max speed is based on strength
+				VAMPIRE.sprite.body.maxVelocity.x = VAMPIRE.sprite.body.maxVelocity.x - BASE_MAX_SPEED/10; //.setTo(entity.stats.INIT_MAX_SPEED - VAMPIRE.stats.hunger);
+				entity.healthText.text = VAMPIRE.sprite.body.maxVelocity.x;
+
+				VAMPIRE.updateHealth();
+			}
+			game.time.events.loop(Phaser.Timer.SECOND * 3, entity.updateStats, this);
+
+			entity.bite = function() {
+				// check distance to runners on screen, target closest if close enough
+			    if(!VAMPIRE.targetedRunner) {
+				    var closeToRunners = [];
+				    for(var r in RUNNERS.children) {
+				    	var runner = RUNNERS.children[r];
+				    	if(runner.alive && runner.name != VAMPIRE.sprite.name ) {
+					    	if(runner.inCamera && game.physics.arcade.distanceBetween(VAMPIRE.sprite, runner) < 20) {
+					    		closeToRunners.push(runner);
+					    		break;
+					    	} else {
+					    		runner.tint = 0xFFFFFF;
+					    	}
+
+					    	if(runner.body.wasTouching.left || runner.body.wasTouching.right || runner.body.wasTouching.up || runner.body.wasTouching.down) {
+				        		runner.y += _.random(-2,3);
+				        	}
+				        }
+				    }
+
+				   	if(closeToRunners.length > 0) {
+						VAMPIRE.targetedRunner = closeToRunners[0];
+						VAMPIRE.targetedRunner.tint = 0xffaaaa;
+				   	}
+
+				}
+
+				if(VAMPIRE.targetedRunner) {
+					var target = VAMPIRE.targetedRunner;
+					VAMPIRE.sprite.animations.stop();
+					VAMPIRE.sprite.animations.play('bite', 7, false).onComplete.addOnce(function() {
+				    	VAMPIRE.sprite.animations.play('feeding', 10, true);
+				    }, this);
+
+					VAMPIRE.distBackText.text = _.sample(["Nom", "Gromp", "Munch", "Erp", "Scrmf","Chortle"])
+					VAMPIRE.sprite.body.velocity.x = 0;
+					VAMPIRE.biting = true;
+					target.body.acceleration = 0;
+					target.body.velocity = 0;
+					target.body.enable = false;
+					target.alive = false;
+					target.animations.stop(null, true);
+					RUNNERS.sendToBack(target);
+					target.frame = 2; // dead
+
+					VAMPIRE.emitter = game.add.emitter(VAMPIRE.sprite.x, VAMPIRE.sprite.y, 100);
+					
+				    VAMPIRE.emitter.makeParticles('blood');
+
+				    VAMPIRE.emitter.minParticleSpeed.setTo(-300, -300);
+				    VAMPIRE.emitter.maxParticleSpeed.setTo(300, 300);
+				    VAMPIRE.emitter.minParticleScale = 0.1;
+				    VAMPIRE.emitter.maxParticleScale = 0.5;
+				    VAMPIRE.emitter.gravity = 0;
+				    
+				    VAMPIRE.emitter.explode(200, 200);
+
+					VAMPIRE.sprite.x = target.x;
+					VAMPIRE.sprite.y = target.y - 4;
+					//game.physics.arcade.moveToXY(VAMPIRE.sprite, target.x, target.y-4, 1, 10); //, speed, xSpeedMax, ySpeedMax)
+
+					VAMPIRE.sprite.body.acceleration.x = 0;
+					// VAMPIRE.sprite.body.velocity = 0;
+					game.time.events.add(Phaser.Timer.SECOND * 1, VAMPIRE.stopBiting, this);
+
+					VAMPIRE.stats.sparkle += BASE_MAX_SPEED/10;
+					//VAMPIRE.stats.strength += 100;
+					VAMPIRE.stats.hunger = -BASE_MAX_SPEED/2;
+					VAMPIRE.sprite.body.maxVelocity.x += BASE_MAX_SPEED/2;
+
+					//VAMPIRE.updateStats(true);
+
+					// moar sparkles!
+					var sparkles2 = game.add.sprite(0,0, 'sparkles');
+					//SPARKLES = 
+					var sp2 = Entity.create('Sparkles', sparkles2, initSparkles, updateSparkles);
+					
+				}
+			}
+			entity.stopBiting = function() {
+				VAMPIRE.biting = false;
+				VAMPIRE.updateHealth();
+			}
+
+			entity.updateSparkles = function() {
+				_.each(VAMPIRE.sparkles, function(s) {
+					
+				});
+			}
+		};
+
+		function updateVampire(entity) {	
+			var player = entity.sprite;
+			player.body.acceleration.x = 0;
+
+			if(VAMPIRE.sprite.x < 50)
+				VAMPIRE.distBackText.text = "GO (much faster)";
+
+			VAMPIRE.toEndText.text = parseInt(game.world.bounds.right - entity.sprite.x, 10) + " to end!";
+
+			if(!VAMPIRE.biting) {
+				// Player controls
+			    if (cursors.left.isDown) {
+			        DIRECTION = Phaser.LEFT;
+			        // player.body.facing = player.body.wasFacing = Phaser.LEFT;
+			        if(player.body.velocity.x > 0) {
+			        	//going forward, reverse faster
+			        	player.body.velocity.x -= 10;
+			        }
+			        player.body.acceleration.x = -(300+SPEED_X);
+			        
+			        player.animations.play('walk');
+			        player.scale.x = -1;
+
+			    } 
+				else if (cursors.right.isDown) {
+					DIRECTION = Phaser.RIGHT;
+
+			    	// player.body.facing = player.body.wasFacing = Phaser.RIGHT;
+			    	if(player.body.velocity.x < 0) {
+			        	//going backward, reverse faster
+			        	player.body.velocity.x += 10;
+			        }
+				    player.body.acceleration.x = (300+SPEED_X);
+				    
+			        player.animations.play('walk');
+			        player.scale.x = 1;
+			    }
+			    
+			    if (cursors.down.isDown) {
+			        player.y += SPEED_Y;
+			        player.animations.play('walk');
+			    } else if (cursors.up.isDown) {
+			        player.y -= SPEED_Y;
+			        player.animations.play('walk');
+			    }
+			    
+			    if(player.animations.currentAnim.name == 'walk' && !cursors.down.isDown && !cursors.up.isDown && !cursors.right.isDown && !cursors.left.isDown) {
+			        //  Stand still
+			        player.animations.stop('walk');
+			        player.frame = 0;
+			    }
+
+			    
+
+			    // untarget if moved away
+			    if(VAMPIRE.targetedRunner) {
+					//still close enough to target this guy?
+					if(VAMPIRE.targetedRunner.inCamera && VAMPIRE.targetedRunner.alive && game.physics.arcade.distanceBetween(VAMPIRE.sprite, VAMPIRE.targetedRunner) < 20) {
+					   	// if(game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
+					   	// 	console.log("BITE");
+					   	// 	VAMPIRE.bite(VAMPIRE.targetedRunner);
+					   	// 	closeToRunners = [];
+					   	// }
+					} else {
+						VAMPIRE.targetedRunner = null;
+					}
+				}
+
+				if(game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
+			   		console.log("BITE");
+			   		VAMPIRE.bite();
+			   		closeToRunners = [];
+			   	}
+			    
+		    } else {
+		    	VAMPIRE.emitter.forEachAlive(function(p){
+					p.alpha= p.lifespan / VAMPIRE.emitter.lifespan;
+				});
+		    }
+		}
+
+		/* UTIL */
+		function sortDeadPeopleToBack(a, b) {
+			if (!a.alive || a['y'] < b['y'])
+		    {
+		        return -1;
+		    }
+		    else if (a['y'] > b['y'])
+		    {
+		        return 1;
+		    }
+		    else
+		    {
+		        if (a.z < b.z)
+		        {
+		            return -1;
+		        }
+		        else
+		        {
+		            return 1;
+		        }
+		    }
+		}
+		
+	</script>
+</body>
+</html>
