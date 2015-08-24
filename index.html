@@ -25,6 +25,8 @@
 	<!-- <canvas id='gameCanvas'></canvas> -->
 	
 	<script>
+	 	var STARTED_GAME;
+
 		var VampireGame = {};
 
 		var game = new Phaser.Game(260, 120, Phaser.CANVAS, '', { 
@@ -74,6 +76,7 @@
 			update: function() {
 				if(game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
 					game.state.start("Game", true, false);
+					STARTED_GAME = Date.now();
 				}
 
 				if(this.vamping) {
@@ -171,10 +174,11 @@
 					if(_.random(1,2) == 1) {
 						//var h = game.add.sprite(11, 10, 'house-top');
 						var a = game.add.sprite(i*94, 85, 'house-top');
-						Entity.create("H1" + i, a, null, function(e) { game.world.bringToTop(e.sprite); })
+						Entity.create("H1" + i, a, null, function(e) {  })
+						game.world.bringToTop(a);
 					} else {
 						var b = game.add.sprite(i*145, 0, 'house-bot');
-						Entity.create("H2" + i, b, null, function(e) { game.world.bringToTop(e.sprite); })
+						Entity.create("H2" + i, b, null, function(e) {  })
 						game.world.bringToTop(b);
 					}
 					
@@ -183,10 +187,11 @@
 				//leaderboard
 				var leaderboard = game.add.sprite(0,0, 'leaderboard');
 				leaderboard.fixedToCamera = true;
-				//leaderboard.visible = false;
+				leaderboard.visible = false;
 				LEADERBOARD = Entity.create("Leaderboard", leaderboard, null, function(e) {});
 
 				LEADERBOARD.showLeaders = function() {
+					FINISHED_GAME = Date.now();
 					game.paused = true;
 					//show leaderboard
 					LEADERBOARD.sprite.visible = true;
@@ -200,16 +205,18 @@
 					LEADERBOARD.sprite.visible = true;
 					game.world.bringToTop(LEADERBOARD.sprite);
 
+					var time = parseInt((FINISHED_GAME - STARTED_GAME) / 1000);
+
 					for(var i = 0; i<5; i++) {
 						var r = sortedEntities[i];
 						var t = (i+1) + ". " + r.name.toUpperCase();
 						if(!r.alive) t += " (deceased)";
 						if(i == 0 && r.name == VAMPIRE.sprite.name) {
-							t += " (well done, sir)"
+							t += " (well done, sir): " + time + "s"
 						} else if( r.name == VAMPIRE.sprite.name) {
-							t+= " (next time...)"
+							t+= " (next time...): " + time + "s"
 						}
-						var txt = game.add.text(40,41+i*13, t, {font: 'Courier New', fontWeight:"normal", fontSize: '12px', fill:"#000"});
+						var txt = game.add.text(40,41+i*13, t, {font: 'Courier New', fontWeight:"normal", fontSize: '11px', fill:"#000"});
 						txt.fixedToCamera = true;
 					}
 
@@ -359,6 +366,7 @@
 					default:
 						VAMPIRE.distBackText.text = ":(";
 				}
+				game.world.bringToTop(VAMPIRE.distBackText);
 			}
 
 			// CHECK FOR THE END
@@ -420,6 +428,7 @@
 		/* ENVIRONS */
 		function initGround(entity) {
 			entity.sprite.fixedToCamera = true;
+			game.world.sendToBack(entity.sprite);
 		}
 		function updateGround(entity) {
 			entity.sprite.tilePosition.x = -game.camera.view.x; 
@@ -483,8 +492,10 @@
 				for(var i = 0; i<num; i++) {
 					entity.bloodDrops.beginFill(0xFF2A00, 1);
 					var c = entity.bloodDrops.drawCircle(i* 8 + 2, 2, 5);
+					game.world.bringToTop(c);
 					entity.bloodDrops.endFill();
 				}	
+				game.world.bringToTop(entity.bloodDrops);
 			}
 			entity.drawHealth(entity.sprite.body.maxVelocity.x / 10, entity);
 
