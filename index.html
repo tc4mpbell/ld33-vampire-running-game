@@ -9,7 +9,7 @@
 		background: #111;
 		text-align: center;
 		padding: 20px;
-		min-height:1000px;
+		
 
 	}
 	canvas {
@@ -165,23 +165,7 @@
 				game.stage.smoothed = false;
 				//game.camera.deadzone = new Phaser.Rectangle(0, 0, 600, 400);
 
-				//random shit
 				
-
-				var possiblePos = _.shuffle([2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,29,]);
-				for(var i = 0; i< 80; i++) {
-					if(_.random(1,2) == 1) {
-						//var h = game.add.sprite(11, 10, 'house-top');
-						var a = game.add.sprite(i*94, 85, 'house-top');
-						Entity.create("H1" + i, a, null, function(e) {  })
-						game.world.bringToTop(a);
-					} else {
-						var b = game.add.sprite(i*145, 0, 'house-bot');
-						Entity.create("H2" + i, b, null, function(e) {  })
-						game.world.bringToTop(b);
-					}
-					
-				}
 
 				//leaderboard
 				var leaderboard = game.add.sprite(0,0, 'leaderboard');
@@ -196,7 +180,8 @@
 					LEADERBOARD.sprite.visible = true;
 
 					//loop through runners.
-					sortedEntities = _(RUNNERS.children).sortBy(function(e) {
+					var realRunners = _.filter(RUNNERS.children, function(r) { return r.key != "house-bot"; });
+					sortedEntities = _(realRunners).sortBy(function(e) {
 						return e.x;
 					}).reverse().value();
 					var leader = sortedEntities[sortedEntities.length - 1];
@@ -241,6 +226,23 @@
 				game.add.image(game.world.bounds.right - 100, -7, 'finish-line-banner-shadow');
 
 				RUNNERS = game.add.group();
+				HOUSES = game.add.group();
+
+				// for zindex, add bots here....
+				for(var i = 0; i< 80; i++) {
+					if(_.random(1,3) == 1) {
+					} else {
+						var b = game.add.sprite((i)*155, 0, 'house-bot');
+						Entity.create("H2" + i, b, null, function(e) {  })
+						//game.world.bringToTop(b);
+						game.physics.arcade.enable(b);
+						RUNNERS.add(b); // add to runners so i can sort em together :P
+						b.body.immovable = true;
+						b.body.moves = false;
+
+						//game.debug.body(b);
+					}
+				}
 
 				//spritz
 				var vamp = game.add.sprite(20, 60, 'vampire')
@@ -265,10 +267,29 @@
 					RUNNERS.add(runner);
 					Entity.create(humanNames[i], runner, initRunner, updateRunner);
 				}
+
+
+				//random shit
+				
+				//zindex, add tops here.
+				for(var i = 0; i< 80; i++) {
+					if(_.random(1,3) == 1) {
+						var a = game.add.sprite(i*114, 85, 'house-top');
+
+						Entity.create("H1" + i, a, null, function(e) {  })
+						game.world.bringToTop(a);
+						//game.physics.arcade.enable(a);
+						HOUSES.add(a);
+						
+					} else {
+					
+					}
+					
+				}
 			},
 			update: function() {
-				RUNNERS.customSort(sortDeadPeopleToBack, this);
 
+				
 				//update all characters, timers, etc.
 				_.each(entities, function(e) {
 					if(e.sprite.alive) {
@@ -282,15 +303,31 @@
 
 				// });
 
+				_.each(HOUSES.children, function(h) {
+					
+					if(h.key == 'house-top') {
+						//h.bringToTop();
+					} else {
+						//h.z = -1;
+						console.log("SORT to back, man.", h);
+						game.world.sendToBack(h);//.sendToBack();
+					}
+				});
+				RUNNERS.customSort(sortDeadPeopleToBack, this);
+
 				// wwwwworking?
 				game.physics.arcade.collide(VAMPIRE.sprite, RUNNERS);
 				game.physics.arcade.collide(RUNNERS, RUNNERS);
+
+				game.physics.arcade.collide(VAMPIRE.sprite, HOUSES);
 				//game.physics.arcade.collide(sprite, sprite3);
 			
 			},
 			render: function() {
 				//game.debug.bodyInfo(VAMPIRE.sprite, 0, 32);
 			    //game.debug.body(VAMPIRE.sprite);
+			    //game.debug.body(HOUSES);
+
 			 	//    //game.debug.body(sprite2);
 			}
 		}
@@ -308,6 +345,7 @@
 		var BASE_MAX_SPEED = 40;
 		var VAMPIRE;
 		var RUNNERS;
+		var HOUSES;
 		var LEADERBOARD;
 
 		var Entity = {
@@ -328,7 +366,8 @@
 
 		/** MISC **/
 		function calcLeader() {
-			sortedEntities = _(RUNNERS.children).sortBy(function(e) {
+			var realRunners = _.filter(RUNNERS.children, function(r) { return r.key != "house-bot"; });
+			sortedEntities = _(realRunners).sortBy(function(e) {
 				if(!e.alive) return -1;
 				return e.x;
 			}).reverse().value();
@@ -517,8 +556,10 @@
 				// check distance to runners on screen, target closest if close enough
 			    if(!VAMPIRE.targetedRunner) {
 				    var closeToRunners = [];
-				    for(var r in RUNNERS.children) {
-				    	var runner = RUNNERS.children[r];
+				    var realRunners = _.filter(RUNNERS.children, function(r) { return r.key != "house-bot"; });
+
+				    for(var r in realRunners) {
+				    	var runner = realRunners[r];
 				    	if(runner.alive && runner.name != VAMPIRE.sprite.name ) {
 					    	if(runner.inCamera && game.physics.arcade.distanceBetween(VAMPIRE.sprite, runner) < 20) {
 					    		closeToRunners.push(runner);
@@ -643,10 +684,11 @@
 			    }
 			    
 			    if (cursors.down.isDown) {
-			        player.y += SPEED_Y;
+			        player.body.velocity.y = 20; //SPEED_Y;
 			        player.animations.play('walk');
 			    } else if (cursors.up.isDown) {
-			        player.y -= SPEED_Y;
+			        //player.y -= SPEED_Y;
+			        player.body.velocity.y = -20; //SPEED_Y;
 			        player.animations.play('walk');
 			    }
 			    
@@ -687,7 +729,7 @@
 
 		/* UTIL */
 		function sortDeadPeopleToBack(a, b) {
-			if (!a.alive || a['y'] < b['y'])
+			if (a.key == 'house-bot' || !a.alive || a['y'] < b['y'])
 		    {
 		        return -1;
 		    }
